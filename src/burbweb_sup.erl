@@ -55,9 +55,11 @@ init([]) ->
                  intensity => 1,
                  period => 5},
 
-    Children = [child(burbweb_router, burbweb_router)],
+    Children = [
+                child(burbweb_router, burbweb_router)
+               ],
 
-    {ok, {SupFlags, [Children]}}.
+    {ok, {SupFlags, Children}}.
 
 %%%===================================================================
 %%% Internal functions
