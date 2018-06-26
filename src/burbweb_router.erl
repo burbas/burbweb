@@ -33,7 +33,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-          listener :: atom(),
+          listener = burbweb_listener :: atom(),
           dispatch_table = [] :: list()
          }).
 

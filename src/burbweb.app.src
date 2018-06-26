@@ -5,7 +5,8 @@
   {mod, { burbweb_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    ranch
    ]},
   {env,[]},
   {modules, []},
