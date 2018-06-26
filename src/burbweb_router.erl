@@ -114,13 +114,13 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({process_routes, Routefile}, State) ->
-    {ok, Routes} = file:consult(Routefile),
+    {ok, HostRoutes} = file:consult(Routefile),
     lists:foreach(
       fun(#{host := Host, routes := Routes}) ->
               [ add_route(Module, Func, Host, Route) || {Route, [Module, Func]} <- Routes ];
          (#{routes := Routes}) ->
               [ add_route(Module, Func, Route) || {Route, [Module, Func]} <- Routes ]
-         end, Routes),
+         end, HostRoutes),
     {noreply, State};
 
 handle_cast({remove_route, Host, Route}, State = #state{dispatch_table = DT}) ->

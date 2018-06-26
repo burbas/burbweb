@@ -12,7 +12,6 @@
         ]).
 
 handle(Mod, Fun, Req = #{method := Method, path := Path}, State) ->
-    Bindings = cowboy_req:bindings(Req),
     case Mod:Fun(Method, Path, Req) of
         {json, JSON} ->
             EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
@@ -20,7 +19,7 @@ handle(Mod, Fun, Req = #{method := Method, path := Path}, State) ->
                                       <<"content-type">> => <<"application/json">>
                                      }, EncodedJSON, Req),
             {ok, Req1, State};
-        {ok, Variables} ->
+        {ok, _Variables} ->
             %% Use the erlydtl compiled thingy
             {ok, Req, State};
         {status, Status} when is_integer(Status) ->
