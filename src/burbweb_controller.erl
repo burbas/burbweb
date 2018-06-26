@@ -1,0 +1,35 @@
+%%% @author Niclas Axelsson <niclas@burbas.se>
+%%% @copyright (C) 2018, Niclas Axelsson
+%%% @doc
+%%%
+%%% @end
+%%% Created : 25 Jun 2018 by Niclas Axelsson <niclas@burbas.se>
+
+-module(burbweb_controller).
+
+-export([
+         init/2,
+         terminate/3
+        ]).
+
+init(Req, State = #{mod := Mod, func := Func}) ->
+    case Mod:init() of
+        rest ->
+            %% Initiate REST protocol
+            {cowboy_rest, Req, State};
+        html ->
+            %% Initiate the basic protocol
+            Req1 = burbweb_controller_html:handle(Mod, Func, Req),
+            {ok, Req1, State};
+        websocket ->
+            %% Websocket
+            {cowboy_websocket, Req, State}
+    end.
+
+
+
+
+
+
+terminate(_Reason, _Req, _State) ->
+    ok.
