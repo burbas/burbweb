@@ -35,8 +35,8 @@ handle(Mod, Fun, Req = #{method := Method, path := Path}, State) ->
 render_dtl(View, Variables, Options) ->
     case code:is_loaded(View) of
         false ->
-            %% See if we can compile it?
-            ok;
+            %% Cast a warning since the module could not be found
+            logger:warning("Could not render ~p cause it's not loaded.", [View]);
         _ ->
             View:render(Variables, Options)
     end.
