@@ -19,10 +19,24 @@ handle(Mod, Fun, Req = #{method := Method, path := Path}, State) ->
                                       <<"content-type">> => <<"application/json">>
                                      }, EncodedJSON, Req),
             {ok, Req1, State};
-        {ok, _Variables} ->
-            %% Use the erlydtl compiled thingy
-            {ok, Req, State};
+        {ok, View, Variables} ->
+            %% Check if the view have been compiled and loaded
+            {ok, HTML} = render_dtl(View, Variables, []),
+            Req1 = cowboy_req:reply(200, #{
+                                      <<"content-type">> => <<"application/html">>
+                                     }, HTML, Req),
+            {ok, Req1, State};
         {status, Status} when is_integer(Status) ->
             Req1 = cowboy_req:reply(Status, #{}, Req),
             {ok, Req1, State}
+    end.
+
+
+render_dtl(View, Variables, Options) ->
+    case code:is_loaded(View) of
+        false ->
+            %% See if we can compile it?
+            ok;
+        _ ->
+            View:render(Variables, Options)
     end.

@@ -115,16 +115,18 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({process_routes, Routefile}, State) ->
     {ok, HostRoutes} = file:consult(Routefile),
+    logger:info("Got host routes: ~p", [HostRoutes]),
     lists:foreach(
       fun(#{host := Host, routes := Routes}) ->
-              [ add_route(Module, Func, Host, Route) || {Route, [Module, Func]} <- Routes ];
+              [ add_route(Module, Func, Host, Route) || {Route, Module, Func} <- Routes ];
          (#{routes := Routes}) ->
-              [ add_route(Module, Func, Route) || {Route, [Module, Func]} <- Routes ]
+              [ add_route(Module, Func, Route) || {Route, Module, Func} <- Routes ]
          end, HostRoutes),
+    apply_routes(),
     {noreply, State};
 
 handle_cast({remove_route, Host, Route}, State = #state{dispatch_table = DT}) ->
-    case proplists:get_val(Host, DT) of
+    case proplists:get_value(Host, DT) of
         undefined ->
             logger:warning("Could not remove route: ~p for host: ~p. Host not found!", [Route, Host]),
             {noreply, State};
@@ -144,7 +146,7 @@ handle_cast({remove_route, Host, Route}, State = #state{dispatch_table = DT}) ->
 
 handle_cast(apply_routes, State = #state{dispatch_table = DT,
                                                 listener = Listener}) ->
-    logger:info("Applying routes.", []),
+    logger:info("Applying routes. ~p", [DT]),
     Dispatch = cowboy_router:compile(DT),
     cowboy:set_env(Listener, dispatch, Dispatch),
     {noreply, State};
@@ -152,12 +154,12 @@ handle_cast(apply_routes, State = #state{dispatch_table = DT,
 handle_cast({add_route, Module, Func, Host, Route}, State = #state{dispatch_table = DT}) ->
     InitialState = #{mod => Module, func => Func},
     RouteInfo = {Route, burbweb_controller, InitialState},
-
+    logger:info("Adding route: ~p for host: ~p, MFA = {~p, ~p, 2}", [Route, Host, Module, Func]),
     NewDT =
-        case proplists:get_val(Host, DT) of
+        case proplists:get_value(Host, DT) of
             undefined ->
                 [{Host, [RouteInfo]}|DT];
-            {Host, Routes} ->
+            Routes ->
                 [{Host, [RouteInfo|Routes]}|DT]
         end,
 

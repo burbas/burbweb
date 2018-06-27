@@ -19,7 +19,7 @@ init(Req, State = #{mod := Mod, func := Func}) ->
             {cowboy_rest, Req, State};
         html ->
             %% Initiate the basic protocol
-            Req1 = burbweb_controller_html:handle(Mod, Func, Req),
+            Req1 = burbweb_controller_html:handle(Mod, Func, Req, State),
             {ok, Req1, State};
         websocket ->
             %% Websocket
