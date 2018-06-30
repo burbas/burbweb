@@ -19,11 +19,20 @@ handle(Mod, Fun, Req = #{method := Method, path := Path}, State) ->
                                       <<"content-type">> => <<"application/json">>
                                      }, EncodedJSON, Req),
             {ok, Req1, State};
+        {ok, Variables} ->
+            %% Derive the view from module
+            ViewName = atom_to_list(Mod) ++ "_dtl",
+            ViewNameAtom = list_to_atom(ViewName),
+            {ok, HTML} = render_dtl(ViewNameAtom, Variables, []),
+            Req1 = cowboy_req:reply(200, #{
+                                      <<"content-type">> => <<"text/html">>
+                                     }, HTML, Req),
+            {ok, Req1, State};
         {ok, View, Variables} ->
             %% Check if the view have been compiled and loaded
             {ok, HTML} = render_dtl(View, Variables, []),
             Req1 = cowboy_req:reply(200, #{
-                                      <<"content-type">> => <<"application/html">>
+                                      <<"content-type">> => <<"text/html">>
                                      }, HTML, Req),
             {ok, Req1, State};
         {status, Status} when is_integer(Status) ->

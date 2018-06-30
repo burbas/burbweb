@@ -50,13 +50,17 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-
+    %% This is a bit ugly, but we need to do this anyhow(?)
+    application:ensure_all_started(ranch),
+    start_cowboy(),
     SupFlags = #{strategy => one_for_one,
                  intensity => 1,
                  period => 5},
 
     Children = [
-                child(burbweb_router, burbweb_router)
+                child(burbweb_compiler, burbweb_compiler),
+                child(burbweb_router, burbweb_router),
+                child(burbweb_session, burbweb_session)
                ],
 
     {ok, {SupFlags, Children}}.
@@ -71,3 +75,15 @@ child(Id, Mod) ->
       shutdown => 5000,
       type => worker,
       modules => [Mod]}.
+
+
+start_cowboy() ->
+    Port =
+        case application:get_env(web_port) of
+            undefined -> 8080;
+            WebPort -> WebPort
+        end,
+    {ok, _} = cowboy:start_clear(
+                burbweb_listener,
+                [{port, Port}],
+                #{}).

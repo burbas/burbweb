@@ -13,11 +13,12 @@
 %% API
 -export([
          start_link/0,
-         process_routefile/1,
-         add_route/3,
-         add_route/4,
+         process_routefile/2,
+         add_route/5,
+         add_route/6,
          apply_routes/0,
-         remove_route/2
+         remove_route/2,
+         get_routes/0
         ]).
 
 %% gen_server callbacks
@@ -51,20 +52,26 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-process_routefile(Routefile) ->
-    gen_server:cast(?SERVER, {process_routes, Routefile}).
+process_routefile(App, Routefile) ->
+    gen_server:cast(?SERVER, {process_routes, App, Routefile}).
 
-add_route(Module, Func, Route) ->
-    add_route(Module, Func, '_', Route).
+add_route(App, Module, Func, Route, Security) ->
+    add_route(App, Module, Func, '_', Route, Security).
 
-add_route(Module, Func, Host, Route) ->
-    gen_server:cast(?SERVER, {add_route, Module, Func, Host, Route}).
+add_route(App, Module, Func, Host, Route, Security) ->
+    gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security}).
+
+add_static(App, Path, Host, Route) ->
+    gen_server:cast(?SERVER, {add_static, App, Path, Host, Route}).
 
 apply_routes() ->
     gen_server:cast(?SERVER, apply_routes).
 
 remove_route(Host, Route) ->
     gen_server:cast(?SERVER, {remove_route, Host, Route}).
+
+get_routes() ->
+    gen_server:call(?SERVER, get_routes).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -82,6 +89,12 @@ remove_route(Host, Route) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    Apps =
+        case application:get_env(burbweb_applications) of
+            undefined -> [];
+            {ok, AppsList} -> AppsList
+        end,
+    lists:foreach(fun load_app_route/1, Apps),
     process_flag(trap_exit, true),
     {ok, #state{}}.
 
@@ -99,6 +112,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(get_routes, _From, State = #state{dispatch_table = DT}) ->
+    {reply, {ok, DT}, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -113,15 +128,18 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({process_routes, Routefile}, State) ->
+handle_cast({process_routes, App, Routefile}, State) ->
     {ok, HostRoutes} = file:consult(Routefile),
-    logger:info("Got host routes: ~p", [HostRoutes]),
     lists:foreach(
-      fun(#{host := Host, routes := Routes}) ->
-              [ add_route(Module, Func, Host, Route) || {Route, Module, Func} <- Routes ];
-         (#{routes := Routes}) ->
-              [ add_route(Module, Func, Route) || {Route, Module, Func} <- Routes ]
-         end, HostRoutes),
+      fun(RoutesLine) ->
+              Prefix = maps:get(prefix, RoutesLine, ""),
+              Host = maps:get(host, RoutesLine, '_'),
+              Routes = maps:get(routes, RoutesLine, []),
+              Statics = maps:get(statics, RoutesLine, []),
+              Secure = maps:get(security, RoutesLine, false),
+              [ add_route(App, Module, Func, Host, Prefix ++ Route, Secure) || {Route, Module, Func} <- Routes ],
+              [ add_static(App, Path, Host, Prefix ++ Route) || {Route, Path} <- Statics ]
+      end, HostRoutes),
     apply_routes(),
     {noreply, State};
 
@@ -145,16 +163,26 @@ handle_cast({remove_route, Host, Route}, State = #state{dispatch_table = DT}) ->
     end;
 
 handle_cast(apply_routes, State = #state{dispatch_table = DT,
-                                                listener = Listener}) ->
+                                         listener = Listener}) ->
     logger:info("Applying routes. ~p", [DT]),
     Dispatch = cowboy_router:compile(DT),
     cowboy:set_env(Listener, dispatch, Dispatch),
     {noreply, State};
 
-handle_cast({add_route, Module, Func, Host, Route}, State = #state{dispatch_table = DT}) ->
-    InitialState = #{mod => Module, func => Func},
+handle_cast({add_static, App, Path, Host, Route}, State = #state{dispatch_table = DT}) ->
+    RouteInfo = {Route, cowboy_static, {priv_dir, App, Path}},
+    NewDT =
+        case proplists:get_value(Host, DT) of
+            undefined ->
+                [{Host, [RouteInfo]}|DT];
+            Routes ->
+                [{Host, [RouteInfo|Routes]}|proplists:delete(Host, DT)]
+        end,
+    {noreply, State#state{dispatch_table = NewDT}};
+
+handle_cast({add_route, App, Module, Func, Host, Route, Secure}, State = #state{dispatch_table = DT}) ->
+    InitialState = #{app => App, mod => Module, func => Func, secure => Secure},
     RouteInfo = {Route, burbweb_controller, InitialState},
-    logger:info("Adding route: ~p for host: ~p, MFA = {~p, ~p, 2}", [Route, Host, Module, Func]),
     NewDT =
         case proplists:get_value(Host, DT) of
             undefined ->
@@ -162,7 +190,6 @@ handle_cast({add_route, Module, Func, Host, Route}, State = #state{dispatch_tabl
             Routes ->
                 [{Host, [RouteInfo|Routes]}|DT]
         end,
-
     {noreply, State#state{dispatch_table = NewDT}};
 
 handle_cast(_Msg, State) ->
@@ -209,3 +236,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+load_app_route(#{name := AppName, routes_file := RouteFile}) ->
+    case code:lib_dir(AppName) of
+        {error, bad_name} ->
+            logger:warning("Could not find the application ~p. Check your config and rerun the application", [AppName]),
+            ok;
+        Filepath ->
+            RouteFilePath = filename:join([Filepath, RouteFile]),
+            process_routefile(AppName, RouteFilePath)
+    end;
+load_app_route(RouteInfo = #{name := AppName}) ->
+    Routename = "priv/" ++ erlang:atom_to_list(AppName) ++ ".routes.erl",
+    load_app_route(RouteInfo#{routes_file => Routename}).
