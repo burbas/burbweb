@@ -12,7 +12,23 @@
          terminate/3
         ]).
 
-init(Req, State = #{mod := Mod, func := Func}) ->
+init(Req, State = #{secure := false}) -> dispatch(Req, State);
+init(Req, State = #{secure := {Mod, Func}}) ->
+    case Mod:Func(Req) of
+        false ->
+            Req1 = cowboy_req:reply(401, #{}, Req),
+            {ok, Req1, State};
+        _ ->
+            dispatch(Req, State)
+    end.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Private functions       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+dispatch(Req, State = #{mod := Mod, func := Func}) ->
     case Mod:init() of
         rest ->
             %% Initiate REST protocol
