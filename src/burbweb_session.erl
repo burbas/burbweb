@@ -86,7 +86,11 @@ put(Key, Value, Req) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    SessionStorage = ets:new(?SERVER, [named_table, protected, {keypos, 2}, {read_concurrency,true}]),
+    SessionStorage = ets:new(?SERVER, [named_table,
+                                       protected,
+                                       {keypos, 2},
+                                       {read_concurrency,true},
+                                       {compressed, true}]),
     process_flag(trap_exit, true),
     {ok, #state{session_table = SessionStorage}}.
 
