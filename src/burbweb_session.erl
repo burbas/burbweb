@@ -54,9 +54,6 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-generate_session_id() ->
-    uuid:to_string(uuid:uuid4()).
-
 get_session(Req) ->
     case cowboy_req:match_cookies([{session_id, [], undefined}], Req) of
         undefined ->
@@ -175,3 +172,5 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+generate_session_id() ->
+    uuid:to_string(uuid:uuid4()).
