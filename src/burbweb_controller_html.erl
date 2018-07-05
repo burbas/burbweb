@@ -23,22 +23,39 @@ handle(Mod, Fun, Req = #{method := Method, path := Path}, State) ->
             %% Derive the view from module
             ViewName = atom_to_list(Mod) ++ "_dtl",
             ViewNameAtom = list_to_atom(ViewName),
-            {ok, HTML} = render_dtl(ViewNameAtom, Variables, []),
-            Req1 = cowboy_req:reply(200, #{
-                                      <<"content-type">> => <<"text/html">>
-                                     }, HTML, Req),
-            {ok, Req1, State};
-        {ok, View, Variables} ->
-            %% Check if the view have been compiled and loaded
-            {ok, HTML} = render_dtl(View, Variables, []),
-            Req1 = cowboy_req:reply(200, #{
-                                      <<"content-type">> => <<"text/html">>
-                                     }, HTML, Req),
-            {ok, Req1, State};
+            handle_view(ViewNameAtom, Variables, #{}, Req, State);
+        {ok, Variables, Options} ->
+            View =
+                case maps:get(view, Options, undefined) of
+                    undefined ->
+                        ViewName = atom_to_list(Mod) ++ "_dtl",
+                        list_to_atom(ViewName);
+                    CustomView ->
+                        CustomView
+                end,
+            handle_view(View, Variables, Options, Req, State);
         {status, Status} when is_integer(Status) ->
             Req1 = cowboy_req:reply(Status, #{}, Req),
             {ok, Req1, State}
     end.
+
+
+%%%%%%%%%%%%%%%%%%%%%
+% Private functions
+%%%%%%%%%%%%%%%%%%%%%
+
+handle_view(View, Variables, Options, Req, State) ->
+    {ok, HTML} = render_dtl(View, Variables, []),
+    Headers =
+        case maps:get(headers, Options, undefined) of
+            undefined ->
+                #{<<"content-type">> => <<"text/html">>};
+            UserHeaders ->
+                UserHeaders
+        end,
+    StatusCode = maps:get(status_code, Options, 200),
+    Req1 = cowboy_req:reply(StatusCode, Headers, HTML, Req),
+    {ok, Req1, State}.
 
 
 render_dtl(View, Variables, Options) ->
