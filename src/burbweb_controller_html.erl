@@ -11,8 +11,9 @@
          handle/4
         ]).
 
-handle(Mod, Fun, Req = #{method := Method, path := Path}, State) ->
-    case Mod:Fun(Method, Path, Req) of
+handle(Mod, Fun, Req = #{method := Method}, State) ->
+    QsVals = cowboy_req:parse_qs(Req),
+    case Mod:Fun(Method, QsVals, Req) of
         {json, JSON} ->
             EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
             Req1 = cowboy_req:reply(200, #{
