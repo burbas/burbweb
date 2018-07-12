@@ -192,7 +192,7 @@ compile_dtl(#{name := App}) ->
 
 do_compile([]) -> [];
 do_compile([File|Files]) ->
-    case file:is_dir(File) of
+    case filelib:is_dir(File) of
         true ->
             {ok, SubFiles} = file:list_dir(File),
             do_compile(SubFiles);
