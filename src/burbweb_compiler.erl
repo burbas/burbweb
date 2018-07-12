@@ -185,21 +185,34 @@ compile_dtl(#{name := App}) ->
             logger:warning("Could not find the src directory of app ~p", [App]),
             error;
         Filepath ->
-            Files = filelib:wildcard(filename:join(Filepath, "*.dtl")),
-            maps:from_list(do_compile(Files))
+            %%Files = filelib:wildcard(filename:join([Filepath, "views", "*.dtl"])),
+            FilesAndDirs = file:list_dir(filename:join(Filepath, "views")),
+            maps:from_list(do_compile(FilesAndDirs))
     end.
 
 do_compile([]) -> [];
 do_compile([File|Files]) ->
-    ModName = list_to_atom(filename:basename(File, ".dtl") ++ "_dtl"),
-    case erlydtl:compile_file(File, ModName) of
-        {ok, Module} ->
-            logger:info("Compiled dtl view: ~p", [Module]);
-        {ok, Module, Binary} when is_binary(Binary) ->
-            logger:info("Compiled dtl view: ~p", [Module]);
-        {ok, Module, Warnings} ->
-            logger:warning("Compiled dtl view: ~p with warnings: ~p", [Module, Warnings]);
-        {ok, Module, _Binary, Warnings} ->
-            logger:warning("Compiled dtl view: ~p with warnings: ~p", [Module, Warnings])
-    end,
-    [{ModName, File}|do_compile(Files)].
+    case file:is_dir(File) of
+        true ->
+            SubFiles = file:list_dir(File),
+            do_compile(SubFiles);
+        _ ->
+            case filename:extension(File) of
+                ".dtl" ->
+                    ModName = list_to_atom(filename:basename(File, ".dtl") ++ "_dtl"),
+                    case erlydtl:compile_file(File, ModName) of
+                        {ok, Module} ->
+                            logger:info("Compiled dtl view: ~p", [Module]);
+                        {ok, Module, Binary} when is_binary(Binary) ->
+                            logger:info("Compiled dtl view: ~p", [Module]);
+                        {ok, Module, Warnings} ->
+                            logger:warning("Compiled dtl view: ~p with warnings: ~p", [Module, Warnings]);
+                        {ok, Module, _Binary, Warnings} ->
+                            logger:warning("Compiled dtl view: ~p with warnings: ~p", [Module, Warnings])
+                    end,
+                    [{ModName, File}|do_compile(Files)];
+                _ ->
+                    %% Not supported file
+                    do_compile(Files)
+            end
+    end.
