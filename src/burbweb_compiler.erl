@@ -186,7 +186,7 @@ compile_dtl(#{name := App}) ->
             error;
         Filepath ->
             %%Files = filelib:wildcard(filename:join([Filepath, "views", "*.dtl"])),
-            FilesAndDirs = file:list_dir(filename:join(Filepath, "views")),
+            {ok, FilesAndDirs} = file:list_dir(filename:join(Filepath, "views")),
             maps:from_list(do_compile(FilesAndDirs))
     end.
 
@@ -194,7 +194,7 @@ do_compile([]) -> [];
 do_compile([File|Files]) ->
     case file:is_dir(File) of
         true ->
-            SubFiles = file:list_dir(File),
+            {ok, SubFiles} = file:list_dir(File),
             do_compile(SubFiles);
         _ ->
             case filename:extension(File) of
