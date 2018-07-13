@@ -187,15 +187,15 @@ compile_dtl(#{name := App}) ->
         Filepath ->
             %%Files = filelib:wildcard(filename:join([Filepath, "views", "*.dtl"])),
             {ok, FilesAndDirs} = file:list_dir(filename:join(Filepath, "views")),
-            maps:from_list(do_compile(FilesAndDirs))
+            Result = [ do_compile(filename:join(Filepath, FileOrDir)) || FileOrDir <- FilesAndDirs ],
+            maps:from_list(lists:flatten(Result))
     end.
 
-do_compile([]) -> [];
-do_compile([File|Files]) ->
+do_compile(File) ->
     case filelib:is_dir(File) of
         true ->
             {ok, SubFiles} = file:list_dir(File),
-            do_compile(SubFiles);
+            [ do_compile(filename:join(File, SubFile)) || SubFile <- SubFiles ];
         _ ->
             case filename:extension(File) of
                 ".dtl" ->
@@ -210,9 +210,9 @@ do_compile([File|Files]) ->
                         {ok, Module, _Binary, Warnings} ->
                             logger:warning("Compiled dtl view: ~p with warnings: ~p", [Module, Warnings])
                     end,
-                    [{ModName, File}|do_compile(Files)];
+                    {ModName, File};
                 _ ->
                     %% Not supported file
-                    do_compile(Files)
+                    []
             end
     end.
