@@ -90,7 +90,7 @@ init([]) ->
                                        protected,
                                        {keypos, 2},
                                        {read_concurrency,true},
-                                       {compressed, true}]),
+                                       compressed]),
     process_flag(trap_exit, true),
     {ok, #state{session_table = SessionStorage}}.
 
