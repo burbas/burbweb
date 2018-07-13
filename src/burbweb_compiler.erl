@@ -187,7 +187,7 @@ compile_dtl(#{name := App}) ->
         Filepath ->
             %%Files = filelib:wildcard(filename:join([Filepath, "views", "*.dtl"])),
             {ok, FilesAndDirs} = file:list_dir(filename:join(Filepath, "views")),
-            Result = [ do_compile(filename:join(Filepath, FileOrDir)) || FileOrDir <- FilesAndDirs ],
+            Result = [ do_compile(filename:join([Filepath, "views", FileOrDir])) || FileOrDir <- FilesAndDirs ],
             maps:from_list(lists:flatten(Result))
     end.
 
