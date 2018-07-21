@@ -18,7 +18,7 @@ init(Req, State = #{secure := {Mod, Func}}) ->
         true ->
             dispatch(Req, State);
         _ ->
-            Req1 = cowboy_req:reply(401, #{}, Req),
+            Req1 = cowboy_req:reply(401, Req),
             {ok, Req1, State}
     end.
 
