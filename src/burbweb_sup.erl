@@ -63,7 +63,15 @@ init([]) ->
                 child(burbweb_session, burbweb_session)
                ],
 
-    {ok, {SupFlags, Children}}.
+    Children2 =
+        case application:get_env(dev_mode) of
+            true ->
+                [child(burbweb_reloader, burbweb_reloader)|Children];
+            _ ->
+                Children
+        end,
+
+    {ok, {SupFlags, Children2}}.
 
 %%%===================================================================
 %%% Internal functions
