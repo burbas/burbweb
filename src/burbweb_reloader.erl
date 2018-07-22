@@ -117,7 +117,7 @@ handle_cast(_Request, State) ->
                          {noreply, NewState :: term(), hibernate} |
                          {stop, Reason :: normal | term(), NewState :: term()}.
 handle_info(check_files, State = #state{last_check = LC}) ->
-    [ reload_newer_file(Module, File, LC) || {Module, File} <- code:all_lodaded() ],
+    [ reload_newer_file(Module, File, LC) || {Module, File} <- code:all_loaded() ],
     timer:send_after(?TIMER_INTERVAL, self(), check_files),
     {noreply, State#state{last_check = calendar:local_time()}};
 handle_info(_Info, State) ->
