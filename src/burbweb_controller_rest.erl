@@ -12,8 +12,7 @@
         ]).
 
 handle(Mod, Fun, Req = #{method := Method}, State) ->
-    QsVals = cowboy_req:parse_qs(Req),
-    case Mod:Fun(QsVals, Req) of
+    case Mod:Fun(Req) of
 	{json, JSON} ->
             EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
 	    StatusCode = case Method of
