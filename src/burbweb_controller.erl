@@ -32,11 +32,10 @@ dispatch(Req, State = #{mod := Mod, func := Func}) ->
     case Mod:init() of
         rest ->
             %% Initiate REST protocol
-            {cowboy_rest, Req, State};
+	    burbweb_controller_rest:handle(Mod, Func, Req, State);
         html ->
             %% Initiate the basic protocol
-            Req1 = burbweb_controller_html:handle(Mod, Func, Req, State),
-            {ok, Req1, State};
+            burbweb_controller_html:handle(Mod, Func, Req, State);
         websocket ->
             %% Websocket
             {cowboy_websocket, Req, State}
