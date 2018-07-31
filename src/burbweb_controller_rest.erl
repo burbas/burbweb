@@ -16,7 +16,11 @@ handle(Mod, Fun, Req = #{method := Method}, State) ->
     case Mod:Fun(QsVals, Req) of
 	{json, JSON} ->
             EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
-            Req1 = cowboy_req:reply(200, #{
+	    StatusCode = case Method of
+			     post -> 201;
+			     _ -> 200
+			 end,
+            Req1 = cowboy_req:reply(StatusCode, #{
                                       <<"content-type">> => <<"application/json">>
                                      }, EncodedJSON, Req),
             {cowboy_rest, Req1, State};
