@@ -61,6 +61,9 @@ add_route(App, Module, Func, Route, Security) ->
 add_route(App, Module, Func, Host, Route, Security) ->
     gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security}).
 
+add_route(App, Module, Func, Host, Route, Security, Method, ControllerType) ->
+    gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security, Method, ControllerType}).
+
 add_static(App, Path, Host, Route) ->
     gen_server:cast(?SERVER, {add_static, App, Path, Host, Route}).
 
@@ -130,18 +133,11 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({process_routes, App, Routefile}, State) ->
     {ok, HostRoutes} = file:consult(Routefile),
-    lists:foreach(
-      fun(RoutesLine) ->
-              Prefix = maps:get(prefix, RoutesLine, ""),
-              Host = maps:get(host, RoutesLine, '_'),
-              Routes = maps:get(routes, RoutesLine, []),
-              Statics = maps:get(statics, RoutesLine, []),
-              Secure = maps:get(security, RoutesLine, false),
-              [ add_route(App, Module, Func, Host, Prefix ++ Route, Secure) || {Route, Module, Func} <- Routes ],
-              [ add_static(App, Path, Host, Prefix ++ Route) || {Route, Path} <- Statics ]
-      end, HostRoutes),
+    process_routes(App, HostRoutes),
     apply_routes(),
     {noreply, State};
+
+
 
 handle_cast({remove_route, Host, Route}, State = #state{dispatch_table = DT}) ->
     case proplists:get_value(Host, DT) of
@@ -182,6 +178,22 @@ handle_cast({add_static, App, Path, Host, Route}, State = #state{dispatch_table 
 
 handle_cast({add_route, App, Module, Func, Host, Route, Secure}, State = #state{dispatch_table = DT}) ->
     InitialState = #{app => App, mod => Module, func => Func, secure => Secure},
+    RouteInfo = {Route, burbweb_controller, InitialState},
+    NewDT =
+        case proplists:get_value(Host, DT) of
+            undefined ->
+                [{Host, [RouteInfo]}|DT];
+            Routes ->
+                [{Host, [RouteInfo|Routes]}|DT]
+        end,
+    {noreply, State#state{dispatch_table = NewDT}};
+handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method, ControllerType}, State = #state{dispatch_table = DT}) ->
+    InitialState = #{app => App,
+		     mod => Module,
+		     func => Func,
+		     secure => Secure,
+		     method => Method,
+		     type => ControllerType},
     RouteInfo = {Route, burbweb_controller, InitialState},
     NewDT =
         case proplists:get_value(Host, DT) of
@@ -248,3 +260,30 @@ load_app_route(#{name := AppName, routes_file := RouteFile}) ->
 load_app_route(RouteInfo = #{name := AppName}) ->
     Routename = "priv/" ++ erlang:atom_to_list(AppName) ++ ".routes.erl",
     load_app_route(RouteInfo#{routes_file => Routename}).
+
+process_routes(_, []) ->
+    ok;
+process_routes(App, [RoutesLine|T]) ->
+    Prefix = maps:get(prefix, RoutesLine, ""),
+    Host = maps:get(host, RoutesLine, '_'),
+    Routes = maps:get(routes, RoutesLine, []),
+    Statics = maps:get(statics, RoutesLine, []),
+    Secure = maps:get(security, RoutesLine, false),
+    add_routes(App, Host, Prefix, Secure, Routes),
+    add_statics(App, Host, Prefix, Statics),
+    process_routes(App, T).
+
+add_routes(_, _, _, _, []) ->
+    ok;
+add_routes(App, Host, Prefix, Secure, [{Route, Module, Func} | T]) ->
+    add_route(App, Module, Func, Host, Prefix ++ Route, Secure),
+    add_routes(App, Host, Prefix, Secure, T);
+add_routes(App, Host, Prefix, Secure, [{Route, Method, Module, Func, ControllerType} | T]) ->
+    add_route(App, Module, Func, Host, Prefix ++ Route, Secure, Method, ControllerType),
+    add_routes(App, Host, Prefix, Secure, T).
+
+add_statics(_, _, _, []) ->
+    ok;
+add_statics(App, Host, Prefix, [{Route, Path} | T]) ->
+    add_static(App, Path, Host, Prefix ++ Route),
+    add_statics(App, Host, Prefix, T).
