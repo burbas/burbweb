@@ -29,7 +29,7 @@ init(Req, State = #{secure := {Mod, Func}}) ->
 
 
 dispatch(Req, State = #{mod := Mod, func := Func}) ->
-    ControllerType = case maps:get_value(type, State, undefined) of
+    ControllerType = case maps:get(type, State, undefined) of
 			 undefined -> Mod:init();
 			 Type -> Type
 		     end,
