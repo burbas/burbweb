@@ -59,7 +59,7 @@ add_route(App, Module, Func, Route, Security) ->
     add_route(App, Module, Func, '_', Route, Security).
 
 add_route(App, Module, Func, Host, Route, Security) ->
-    add_route(App, Module, Func, Host, Route, Security, '_', rest}).
+    add_route(App, Module, Func, Host, Route, Security, '_', rest).
 
 add_route(App, Module, Func, Host, Route, Security, Method, ControllerType) ->
     gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security, Method, ControllerType}).
@@ -278,17 +278,3 @@ add_statics(_, _, _, []) ->
 add_statics(App, Host, Prefix, [{Route, Path} | T]) ->
     add_static(App, Path, Host, Prefix ++ Route),
     add_statics(App, Host, Prefix, T).
-
-get_method(get) ->
-    <<"GET">>;
-get_method(post) ->
-    <<"POST">>;
-get_method(delete) ->
-    <<"DELETE">>;
-get_method(put) ->
-    <<"PUT">>;
-get_method('_') ->
-    '_';
-get_method(Other) ->
-    logger:error("Unsupported method in routes: ~p", [Other]),
-    throw(unsupported_method).

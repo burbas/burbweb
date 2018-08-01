@@ -44,7 +44,7 @@ dispatch(Req = #{method := ReqMethod},
     end;
 dispatch(Req, State) ->
     Req1 = cowboy_req:reply(404, Req),
-    {ok, Req1, State}
+    {ok, Req1, State}.
 
 
 
