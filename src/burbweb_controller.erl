@@ -28,12 +28,10 @@ init(Req, State = #{secure := {Mod, Func}}) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-dispatch(Req, State = #{mod := Mod, func := Func}) ->
-    ControllerType = case maps:get(type, State, undefined) of
-			 undefined -> Mod:init();
-			 Type -> Type
-		     end,
-    case ControllerType of
+dispatch(Req = #{method := ReqMethod},
+         State = #{mod := Mod, func := Func, method := Method, type := Type}) when Method == '_' orelse
+                                                                                   Method == ReqMethod ->
+    case Type of
 	rest ->
 	    %% Initiate REST protocol
 	    burbweb_controller_rest:handle(Mod, Func, Req, State);
@@ -43,10 +41,10 @@ dispatch(Req, State = #{mod := Mod, func := Func}) ->
 	websocket ->
 	    %% Websocket
 	    {cowboy_websocket, Req, State}
-    end.
-
-
-
+    end;
+dispatch(Req, State) ->
+    Req1 = cowboy_req:reply(404, Req),
+    {ok, Req1, State}.
 
 
 

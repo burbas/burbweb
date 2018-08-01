@@ -59,7 +59,7 @@ add_route(App, Module, Func, Route, Security) ->
     add_route(App, Module, Func, '_', Route, Security).
 
 add_route(App, Module, Func, Host, Route, Security) ->
-    gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security}).
+    add_route(App, Module, Func, Host, Route, Security, '_', rest).
 
 add_route(App, Module, Func, Host, Route, Security, Method, ControllerType) ->
     gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security, Method, ControllerType}).
@@ -176,17 +176,6 @@ handle_cast({add_static, App, Path, Host, Route}, State = #state{dispatch_table 
         end,
     {noreply, State#state{dispatch_table = NewDT}};
 
-handle_cast({add_route, App, Module, Func, Host, Route, Secure}, State = #state{dispatch_table = DT}) ->
-    InitialState = #{app => App, mod => Module, func => Func, secure => Secure},
-    RouteInfo = {Route, burbweb_controller, InitialState},
-    NewDT =
-        case proplists:get_value(Host, DT) of
-            undefined ->
-                [{Host, [RouteInfo]}|DT];
-            Routes ->
-                [{Host, [RouteInfo|Routes]}|DT]
-        end,
-    {noreply, State#state{dispatch_table = NewDT}};
 handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method, ControllerType}, State = #state{dispatch_table = DT}) ->
     InitialState = #{app => App,
 		     mod => Module,
@@ -195,6 +184,7 @@ handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method, Controll
 		     method => Method,
 		     type => ControllerType},
     RouteInfo = {Route, burbweb_controller, InitialState},
+
     NewDT =
         case proplists:get_value(Host, DT) of
             undefined ->
@@ -202,6 +192,7 @@ handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method, Controll
             Routes ->
                 [{Host, [RouteInfo|Routes]}|DT]
         end,
+
     {noreply, State#state{dispatch_table = NewDT}};
 
 handle_cast(_Msg, State) ->
