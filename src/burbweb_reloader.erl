@@ -179,10 +179,6 @@ reload_newer_file(Module, Filename, LastCheck) ->
                     logger:error("Could not reload module ~p. Exited with reason ~p", [Module, Reason]),
                     error
             end;
-        {ok, _} ->
-            logger:warning("Unsupported time format from file:read_file_info/1. Unable to reload file."),
-            ok;
         _ ->
-            logger:warning("Could not read file info from file ~s", [Filename]),
             ok
     end.
