@@ -185,8 +185,8 @@ compile_files(#{name := App}) ->
             logger:warning("Could not find the src directory of app ~p", [App]),
             error;
         Filepath ->
-            {ok, FilesAndDirs} = file:list_dir(filename:join(Filepath, "views")),
-            Result = [ do_compile(filename:join([Filepath, "views", FileOrDir])) || FileOrDir <- FilesAndDirs ],
+            {ok, FilesAndDirs} = file:list_dir(Filepath),
+            Result = [ do_compile(filename:join([Filepath, FileOrDir])) || FileOrDir <- FilesAndDirs ],
             maps:from_list(lists:flatten(Result))
     end.
 
