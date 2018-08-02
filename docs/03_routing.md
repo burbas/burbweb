@@ -40,14 +40,14 @@ You can secure routes by providing a module and function to the `security` direc
 ```erlang
 #{prefix => "/admin",
   type => html,
-  security => {security\_controller, do\_security},
+  security => {security_controller, do_security},
   routes => [
-    {"/", get, my\_controller, main}
+    {"/", get, my_controller, main}
   ]
 }
 ```
 
-This will cause burbweb to call `security\_controller:do\_security/1` before calling the actual controller for all routes defined in the above route entry.
+This will cause burbweb to call `security_controller:do_security/1` before calling the actual controller for all routes defined in the above route entry.
 The security function should return a boolean (If the user can proceed or not).
 
 
@@ -55,7 +55,7 @@ An example of a security function:
 
 
 ```erlang
-do\_security(Req) ->
+do_security(Req) ->
     maps:get(host, Req) == "my_domain.com".
 ```
 
