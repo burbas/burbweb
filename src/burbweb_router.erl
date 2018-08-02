@@ -181,7 +181,7 @@ handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method, Controll
 		     mod => Module,
 		     func => Func,
 		     secure => Secure,
-		     method => Method,
+		     method => get_method(Method),
 		     type => ControllerType},
     RouteInfo = {Route, burbweb_controller, InitialState},
 
@@ -278,3 +278,10 @@ add_statics(_, _, _, []) ->
 add_statics(App, Host, Prefix, [{Route, Path} | T]) ->
     add_static(App, Path, Host, Prefix ++ Route),
     add_statics(App, Host, Prefix, T).
+
+
+get_method(get) -> <<"GET">>;
+get_method(post) -> <<"POST">>;
+get_method(put) -> <<"PUT">>;
+get_method(delete) -> <<"DELETE">>;
+get_method(Others) -> Others.
