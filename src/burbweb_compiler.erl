@@ -128,9 +128,9 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({compile_app_views, App}, State = #state{compiled_modules = CM}) ->
     CM2 =
-        case compile_dtl(App) of
+        case compile_files(App) of
             error ->
-                State;
+                CM;
             ModMap ->
                 maps:merge(ModMap, CM)
         end,
@@ -179,13 +179,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-compile_dtl(#{name := App}) ->
+compile_files(#{name := App}) ->
     case code:lib_dir(App, src) of
         {error, _} ->
             logger:warning("Could not find the src directory of app ~p", [App]),
             error;
         Filepath ->
-            %%Files = filelib:wildcard(filename:join([Filepath, "views", "*.dtl"])),
             {ok, FilesAndDirs} = file:list_dir(filename:join(Filepath, "views")),
             Result = [ do_compile(filename:join([Filepath, "views", FileOrDir])) || FileOrDir <- FilesAndDirs ],
             maps:from_list(lists:flatten(Result))
@@ -211,6 +210,15 @@ do_compile(File) ->
                             logger:warning("Compiled dtl view: ~p with warnings: ~p", [Module, Warnings])
                     end,
                     {ModName, File};
+                ".erl" ->
+                    case compile:file(File) of
+                        {error, Errors, Warnings} ->
+                            logger:warning("Got error when compiling ~p. Errors: ~p, Warnings: ~p", [File, Errors, Warnings]);
+                        error ->
+                            logger:warning("Could not compile file ~p", [File]);
+                        _ ->
+                            logger:info("Compiled erlang module from file: ~p", [File])
+                    end;
                 _ ->
                     %% Not supported file
                     []
