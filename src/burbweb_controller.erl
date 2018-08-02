@@ -29,19 +29,9 @@ init(Req, State = #{secure := {Mod, Func}}) ->
 
 
 dispatch(Req = #{method := ReqMethod},
-         State = #{mod := Mod, func := Func, method := Method, type := Type}) when Method == '_' orelse
-                                                                                   Method == ReqMethod ->
-    case Type of
-	rest ->
-	    %% Initiate REST protocol
-	    burbweb_controller_rest:handle(Mod, Func, Req, State);
-	html ->
-	    %% Initiate the basic protocol
-	    burbweb_controller_html:handle(Mod, Func, Req, State);
-	websocket ->
-	    %% Websocket
-	    {cowboy_websocket, Req, State}
-    end;
+         State = #{mod := Mod, func := Func, method := Method}) when Method == '_' orelse
+                                                                     Method == ReqMethod ->
+    handle(Mod, Func, Req, State);
 dispatch(Req, State) ->
     Req1 = cowboy_req:reply(404, Req),
     {ok, Req1, State}.
@@ -50,3 +40,77 @@ dispatch(Req, State) ->
 
 terminate(_Reason, _Req, _State) ->
     ok.
+
+
+%%%%%%%%%%%%%%%%%%%%%
+%% Private functions
+%%%%%%%%%%%%%%%%%%%%%
+
+handle(Mod, Fun, Req = #{method := Method}, State) ->
+    QsVals = cowboy_req:parse_qs(Req),
+    case Mod:Fun(Method, QsVals, Req) of
+	{json, JSON} ->
+            EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
+	    StatusCode = case Method of
+			     post -> 201;
+			     _ -> 200
+			 end,
+            Req1 = cowboy_req:reply(StatusCode, #{
+                                                  <<"content-type">> => <<"application/json">>
+                                                 }, EncodedJSON, Req),
+            {cowboy_rest, Req1, State};
+        {json, StatusCode, Headers, JSON} ->
+            EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
+            Req1 = cowboy_req:reply(StatusCode,
+				    maps:join(#{<<"content-type">> =>
+						    <<"application/json">>},
+                                              Headers),
+				    EncodedJSON,
+				    Req),
+            {cowboy_rest, Req1, State};
+        {ok, Variables} ->
+            %% Derive the view from module
+            ViewName = atom_to_list(Mod) ++ "_dtl",
+            ViewNameAtom = list_to_atom(ViewName),
+            handle_view(ViewNameAtom, Variables, #{}, Req, State);
+        {ok, Variables, Options} ->
+            View =
+                case maps:get(view, Options, undefined) of
+                    undefined ->
+                        ViewName = atom_to_list(Mod) ++ "_dtl",
+                        list_to_atom(ViewName);
+                    CustomView ->
+                        CustomView
+                end,
+            handle_view(View, Variables, Options, Req, State);
+        {status, Status} when is_integer(Status) ->
+            Req1 = cowboy_req:reply(Status, #{}, Req),
+            {ok, Req1, State};
+        Other ->
+            logger:info("Unsupported return value from controller ~p:~p/1. Returned: ~p", [Mod, Fun, Other]),
+            Req1 = cowboy_req:reply(500, #{}, Req),
+            {ok, Req1, State}
+    end.
+
+handle_view(View, Variables, Options, Req, State) ->
+    {ok, HTML} = render_dtl(View, Variables, []),
+    Headers =
+        case maps:get(headers, Options, undefined) of
+            undefined ->
+                #{<<"content-type">> => <<"text/html">>};
+            UserHeaders ->
+                UserHeaders
+        end,
+    StatusCode = maps:get(status_code, Options, 200),
+    Req1 = cowboy_req:reply(StatusCode, Headers, HTML, Req),
+    {ok, Req1, State}.
+
+
+render_dtl(View, Variables, Options) ->
+    case code:is_loaded(View) of
+        false ->
+            %% Cast a warning since the module could not be found
+            logger:warning("Could not render ~p cause it's not loaded.", [View]);
+        _ ->
+            View:render(Variables, Options)
+    end.
