@@ -213,11 +213,17 @@ do_compile(File) ->
                 ".erl" ->
                     case compile:file(File) of
                         {error, Errors, Warnings} ->
-                            logger:warning("Got error when compiling ~p. Errors: ~p, Warnings: ~p", [File, Errors, Warnings]);
+                            logger:warning("Got error when compiling ~p. Errors: ~p, Warnings: ~p", [File, Errors, Warnings]),
+                            [];
                         error ->
-                            logger:warning("Could not compile file ~p", [File]);
-                        _ ->
-                            logger:info("Compiled erlang module from file: ~p", [File])
+                            logger:warning("Could not compile file ~p", [File]),
+                            [];
+                        {ok, ModuleName, Warnings} ->
+                            logger:info("Compiled erlang module from file: ~p with warnings: ~p", [File, Warnings]),
+                            {ModuleName, File};
+                        {ok, ModuleName} ->
+                            logger:info("Compiled erlang module from file: ~p", [File]),
+                            {ModuleName, File}
                     end;
                 _ ->
                     %% Not supported file
