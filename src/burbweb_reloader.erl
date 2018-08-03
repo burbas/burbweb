@@ -12,7 +12,8 @@
 
 %% API
 -export([
-         start_link/0
+         start_link/0,
+         add_directory/1
         ]).
 
 %% gen_server callbacks
@@ -33,7 +34,7 @@
 -define(TIMER_INTERVAL, 1000). %% 1000ms
 
 -record(state, {
-                last_check
+                files_state = #{}
                }).
 
 %%%===================================================================
@@ -51,6 +52,10 @@
                       ignore.
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+
+add_directory(Dir) ->
+    gen_server:cast(?MODULE, {add_dir, Dir}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -70,7 +75,7 @@ start_link() ->
 init([]) ->
     process_flag(trap_exit, true),
     timer:send_after(?TIMER_INTERVAL, self(), check_files),
-    {ok, #state{last_check = calendar:local_time()}}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,6 +107,9 @@ handle_call(_Request, _From, State) ->
                          {noreply, NewState :: term(), Timeout :: timeout()} |
                          {noreply, NewState :: term(), hibernate} |
                          {stop, Reason :: term(), NewState :: term()}.
+handle_cast({add_dir, Dir}, State = #state{files_state = FS}) ->
+    FS2 = recompile_newer([Dir], FS),
+    {noreply, State#state{files_state = FS2}};
 handle_cast(_Request, State) ->
     {noreply, State}.
 
@@ -116,10 +124,12 @@ handle_cast(_Request, State) ->
                          {noreply, NewState :: term(), Timeout :: timeout()} |
                          {noreply, NewState :: term(), hibernate} |
                          {stop, Reason :: normal | term(), NewState :: term()}.
-handle_info(check_files, State = #state{last_check = LC}) ->
-    [ reload_newer_file(Module, File, LC) || {Module, File} <- code:all_loaded() ],
+handle_info(check_files, State = #state{files_state = FS}) ->
+    {ok, Apps} = application:get_env(burbweb_applications),
+    Filepaths = [ code:lib_dir(App, src) || #{name := App} <- Apps ],
+    FS2 = recompile_newer(Filepaths, FS),
     timer:send_after(?TIMER_INTERVAL, self(), check_files),
-    {noreply, State#state{last_check = calendar:local_time()}};
+    {noreply, State#state{files_state = FS2}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -166,19 +176,42 @@ format_status(_Opt, Status) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-reload_newer_file(Module, Filename, LastCheck) ->
-    case file:read_file_info(Filename) of
-        {ok, #file_info{mtime = MTime}} when is_tuple(MTime) andalso MTime >= LastCheck ->
-            %% This is the case we support for now
-            code:purge(Module),
-            case code:load_file(Module) of
-                {module, Module} ->
-                    logger:info("Reloaded module ~p", [Module]),
-                    ok;
-                {error, Reason} ->
-                    logger:error("Could not reload module ~p. Exited with reason ~p", [Module, Reason]),
-                    error
+reload_module(Module) ->
+    code:purge(Module),
+    case code:load_file(Module) of
+        {module, Module} ->
+            logger:info("Reloaded module ~p", [Module]),
+            ok;
+        {error, Reason} ->
+            logger:error("Could not reload module ~p. Exited with reason ~p", [Module, Reason]),
+            error
+    end.
+
+
+
+recompile_newer([], State) -> State;
+recompile_newer([File|Files], State) ->
+    case maps:get(File, State, undefined) of
+        undefined ->
+            case filelib:is_dir(File) of
+                true ->
+                    {ok, DirFiles} = file:list_dir(File),
+                    DirFiles2 = [ filename:join(File, X) || X <- DirFiles ],
+                    SubState = recompile_newer(DirFiles2, State),
+                    recompile_newer(Files, SubState);
+                _ ->
+                    recompile_newer(Files, State#{File => calendar:local_time()})
             end;
-        _ ->
-            ok
+        Time ->
+            case file:read_file_info(File) of
+                {ok, #file_info{mtime = MTime}} when is_tuple(MTime) andalso
+                                                     MTime >= Time ->
+                    %% This file have been changed so recompile and reload.
+                    {Module, _} = burbweb_compiler:do_compile([File]),
+                    reload_module(Module),
+                    recompile_newer(Files, State#{File := calendar:local_time()});
+                _ ->
+                    %% File have not changed
+                    recompile_newer(Files, State)
+            end
     end.

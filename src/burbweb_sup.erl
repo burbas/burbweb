@@ -65,7 +65,7 @@ init([]) ->
 
     Children2 =
         case application:get_env(dev_mode) of
-            true ->
+            {ok, true} ->
                 [child(burbweb_reloader, burbweb_reloader)|Children];
             _ ->
                 Children
