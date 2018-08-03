@@ -15,6 +15,7 @@
          start_link/0,
          compile_all/0,
          compile_all/1,
+         do_compile/1,
          get_views/0,
          recompile_view/1
         ]).
