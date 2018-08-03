@@ -16,6 +16,7 @@
          process_routefile/2,
          add_route/5,
          add_route/6,
+         add_route/7,
          apply_routes/0,
          remove_route/2,
          get_routes/0
@@ -59,10 +60,10 @@ add_route(App, Module, Func, Route, Security) ->
     add_route(App, Module, Func, '_', Route, Security).
 
 add_route(App, Module, Func, Host, Route, Security) ->
-    add_route(App, Module, Func, Host, Route, Security, '_', rest).
+    add_route(App, Module, Func, Host, Route, Security, '_').
 
-add_route(App, Module, Func, Host, Route, Security, Method, ControllerType) ->
-    gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security, Method, ControllerType}).
+add_route(App, Module, Func, Host, Route, Security, Method) ->
+    gen_server:cast(?SERVER, {add_route, App, Module, Func, Host, Route, Security, Method}).
 
 add_static(App, Path, Host, Route) ->
     gen_server:cast(?SERVER, {add_static, App, Path, Host, Route}).
@@ -176,13 +177,12 @@ handle_cast({add_static, App, Path, Host, Route}, State = #state{dispatch_table 
         end,
     {noreply, State#state{dispatch_table = NewDT}};
 
-handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method, ControllerType}, State = #state{dispatch_table = DT}) ->
+handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method}, State = #state{dispatch_table = DT}) ->
     InitialState = #{app => App,
 		     mod => Module,
 		     func => Func,
 		     secure => Secure,
-		     method => get_method(Method),
-		     type => ControllerType},
+		     method => get_method(Method)},
     RouteInfo = {Route, burbweb_controller, InitialState},
 
     NewDT =
@@ -269,8 +269,8 @@ add_routes(_, _, _, _, []) ->
 add_routes(App, Host, Prefix, Secure, [{Route, Module, Func} | T]) ->
     add_route(App, Module, Func, Host, Prefix ++ Route, Secure),
     add_routes(App, Host, Prefix, Secure, T);
-add_routes(App, Host, Prefix, Secure, [{Route, Method, Module, Func, ControllerType} | T]) ->
-    add_route(App, Module, Func, Host, Prefix ++ Route, Secure, Method, ControllerType),
+add_routes(App, Host, Prefix, Secure, [{Route, Method, Module, Func} | T]) ->
+    add_route(App, Module, Func, Host, Prefix ++ Route, Secure, Method),
     add_routes(App, Host, Prefix, Secure, T).
 
 add_statics(_, _, _, []) ->
