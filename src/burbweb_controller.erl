@@ -47,7 +47,6 @@ terminate(_Reason, _Req, _State) ->
 %%%%%%%%%%%%%%%%%%%%%
 
 handle(Mod, Fun, Req = #{method := Method}, State) ->
-    QsVals = cowboy_req:parse_qs(Req),
     case Mod:Fun(Req) of
 	{json, JSON} ->
             EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
@@ -58,7 +57,7 @@ handle(Mod, Fun, Req = #{method := Method}, State) ->
             Req1 = cowboy_req:reply(StatusCode, #{
                                                   <<"content-type">> => <<"application/json">>
                                                  }, EncodedJSON, Req),
-            {cowboy_rest, Req1, State};
+            {ok, Req1, State};
         {json, StatusCode, Headers, JSON} ->
             EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
             Req1 = cowboy_req:reply(StatusCode,
@@ -67,7 +66,7 @@ handle(Mod, Fun, Req = #{method := Method}, State) ->
                                               Headers),
 				    EncodedJSON,
 				    Req),
-            {cowboy_rest, Req1, State};
+            {ok, Req1, State};
         {ok, Variables} ->
             %% Derive the view from module
             ViewName = atom_to_list(Mod) ++ "_dtl",
