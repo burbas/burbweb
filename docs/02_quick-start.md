@@ -2,7 +2,33 @@
 
 ## Use rebar3 and burbweb_rebar3
 
-## burbweb_admin
+The easiest way to get started with burbweb is to make use of the rebar3 plugin which can be found here: https://github.com/burbas/burbweb_rebar3
+Once installed you can call
+
+```
+$ rebar3 new burbweb my_first_app
+===> Writing my_first_app/priv/my_first_app.routes.erl
+===> Writing my_first_app/src/my_first_app.app.src
+===> Writing my_first_app/src/my_first_app_app.erl
+===> Writing my_first_app/src/my_first_app_sup.erl
+===> Writing my_first_app/src/controllers/my_first_app_main_controller.erl
+===> Writing my_first_app/src/views/my_first_app_main_controller.dtl
+===> Writing my_first_app/rebar.config
+```
+
+This will create a bunch of boiler plate files that helps you getting started. To start your app just type
+
+```
+$ rebar3 shell
+===> Verifying dependencies...
+===> Compiling my_first_app
+Erlang/OTP 20 [erts-9.3] [source] [64-bit] [smp:8:8] [ds:8:8:10] [async-threads:0] [hipe] [kernel-poll:false]
+
+Eshell V9.3  (abort with ^G)
+1>
+```
+
+Now you can type `application:ensure_all_started(my_first_app).` to start your app. If you now open http://localhost:8080/ you should see a "Hello World"-message.
 
 ## Dev mode
 
