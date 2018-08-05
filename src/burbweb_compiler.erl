@@ -197,10 +197,12 @@ do_compile(File) ->
             {ok, SubFiles} = file:list_dir(File),
             [ do_compile(filename:join(File, SubFile)) || SubFile <- SubFiles ];
         _ ->
+            {ok, Application} = application:get_application(),
             case filename:extension(File) of
                 ".dtl" ->
                     ModName = list_to_atom(filename:basename(File, ".dtl") ++ "_dtl"),
-                    case erlydtl:compile_file(File, ModName) of
+                    Options = [{out_dir, code:lib_dir(Application, ebin)}],
+                    case erlydtl:compile_file(File, ModName, Options) of
                         {ok, Module} ->
                             logger:info("Compiled dtl view: ~p", [Module]);
                         {ok, Module, Binary} when is_binary(Binary) ->
@@ -212,7 +214,8 @@ do_compile(File) ->
                     end,
                     {ModName, File};
                 ".erl" ->
-                    case compile:file(File) of
+                    Options = [{outdir, code:lib_dir(Application, ebin)}],
+                    case compile:file(File, Options) of
                         {error, Errors, Warnings} ->
                             logger:warning("Got error when compiling ~p. Errors: ~p, Warnings: ~p", [File, Errors, Warnings]),
                             [];
