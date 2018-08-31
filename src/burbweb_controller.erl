@@ -85,6 +85,8 @@ handle(Mod, Fun, Req = #{method := Method}, State) ->
         {status, Status} when is_integer(Status) ->
             Req1 = cowboy_req:reply(Status, #{}, Req),
             {ok, Req1, State};
+        {cowboy_req, CowboyReq} ->
+            {ok, CowboyReq, State};
         Other ->
             logger:info("Unsupported return value from controller ~p:~p/1. Returned: ~p", [Mod, Fun, Other]),
             Req1 = cowboy_req:reply(500, #{}, Req),
