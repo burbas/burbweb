@@ -190,7 +190,6 @@ handle_cast({add_route, App, Module, Func, Host, Route, Secure, Method}, State =
             undefined ->
                 [{Host, [RouteInfo]}|DT];
             Routes ->
-                [{Host, [RouteInfo|Routes]}|DT]
                 [{Host, [RouteInfo|Routes]}|proplists:delete(Host, DT)]
         end,
 
