@@ -61,7 +61,7 @@ handle(Mod, Fun, Req = #{method := Method}, State) ->
         {json, StatusCode, Headers, JSON} ->
             EncodedJSON = jsone:encode(JSON, [undefined_as_null]),
             Req1 = cowboy_req:reply(StatusCode,
-				    maps:join(#{<<"content-type">> =>
+				    maps:merge(#{<<"content-type">> =>
 						    <<"application/json">>},
                                               Headers),
 				    EncodedJSON,
