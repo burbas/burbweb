@@ -52,7 +52,16 @@ start_link() ->
 init([]) ->
     %% This is a bit ugly, but we need to do this anyhow(?)
     application:ensure_all_started(ranch),
-    start_cowboy(),
+    case application:get_env(use_ssl) of
+        true ->
+            {ok, CACert} = application:get_env(ssl_cacertfile),
+            {ok, Cert} = application:get_env(ssl_certfile),
+            {ok, Key} = application:get_env(ssl_keyfile),
+            start_cowboy_secure(CACert, Cert, Key);
+        _ ->
+            start_cowboy()
+    end,
+
     SupFlags = #{strategy => one_for_one,
                  intensity => 1,
                  period => 5},
@@ -95,3 +104,15 @@ start_cowboy() ->
                 burbweb_listener,
                 [{port, Port}],
                 #{}).
+
+start_cowboy_secure(CACert, Cert, Key) ->
+    Port = case application:get_env(ssl_port) of
+               undefined -> 8443;
+               SSLPort -> SSLPort
+           end,
+    {ok, _} = cowboy:start_tls(https, [
+                                       {port, Port},
+                                       {cacertfile, CACert},
+                                       {certfile, Cert},
+                                       {keyfile, Key}
+                                      ], #{}).
