@@ -85,6 +85,9 @@ handle(Mod, Fun, Req = #{method := Method}, State) ->
         {status, Status} when is_integer(Status) ->
             Req1 = cowboy_req:reply(Status, #{}, Req),
             {ok, Req1, State};
+        {status, Status, Headers} when is_integer(Status) ->
+            Req1 = cowboy_req:reply(Status, Headers, Req),
+            {ok, Req1, State};
         {cowboy_req, CowboyReq} ->
             {ok, CowboyReq, State};
         Other ->
