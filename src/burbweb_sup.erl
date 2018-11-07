@@ -97,7 +97,7 @@ start_cowboy() ->
     Port =
         case application:get_env(web_port) of
             undefined -> 8080;
-            WebPort -> WebPort
+            {ok, WebPort} -> WebPort
         end,
     {ok, _} = cowboy:start_clear(
                 burbweb_listener,
@@ -107,7 +107,7 @@ start_cowboy() ->
 start_cowboy_secure(CACert, Cert) ->
     Port = case application:get_env(ssl_port) of
                undefined -> 8443;
-               SSLPort -> SSLPort
+               {ok, SSLPort} -> SSLPort
            end,
     {ok, _} = cowboy:start_tls(https, [
                                        {port, Port},
