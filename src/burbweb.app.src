@@ -3,10 +3,17 @@
   {vsn, "0.1.0"},
   {registered, []},
   {mod, { burbweb_app, []}},
+  {included_applications, [
+    ranch,
+    cowboy,
+    compiler,
+    erlydtl,
+    jwt,
+    jsone]},
   {applications,
    [kernel,
     stdlib,
-    ranch
+    sasl
    ]},
   {env,[]},
   {modules, []},
