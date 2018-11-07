@@ -109,7 +109,7 @@ start_cowboy_secure(CACert, Cert) ->
                undefined -> 8443;
                {ok, SSLPort} -> SSLPort
            end,
-    {ok, _} = cowboy:start_tls(https, [
+    {ok, _} = cowboy:start_tls(burbweb_listener, [
                                        {port, Port},
                                        {certfile, Cert},
                                        {cacertfile, CACert}
