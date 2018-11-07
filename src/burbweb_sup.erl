@@ -53,11 +53,9 @@ init([]) ->
     %% This is a bit ugly, but we need to do this anyhow(?)
     application:ensure_all_started(ranch),
     case application:get_env(use_ssl) of
-        true ->
-            {ok, CACert} = application:get_env(ssl_cacertfile),
+        {ok, true} ->
             {ok, Cert} = application:get_env(ssl_certfile),
-            {ok, Key} = application:get_env(ssl_keyfile),
-            start_cowboy_secure(CACert, Cert, Key);
+            start_cowboy_secure(Cert);
         _ ->
             start_cowboy()
     end,
@@ -105,14 +103,12 @@ start_cowboy() ->
                 [{port, Port}],
                 #{}).
 
-start_cowboy_secure(CACert, Cert, Key) ->
+start_cowboy_secure(Cert) ->
     Port = case application:get_env(ssl_port) of
                undefined -> 8443;
                SSLPort -> SSLPort
            end,
     {ok, _} = cowboy:start_tls(https, [
                                        {port, Port},
-                                       {cacertfile, CACert},
-                                       {certfile, Cert},
-                                       {keyfile, Key}
+                                       {cert, Cert}
                                       ], #{}).
