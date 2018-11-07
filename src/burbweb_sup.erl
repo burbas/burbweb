@@ -55,7 +55,8 @@ init([]) ->
     case application:get_env(use_ssl) of
         {ok, true} ->
             {ok, Cert} = application:get_env(ssl_certfile),
-            start_cowboy_secure(Cert);
+            {ok, CACert} = application:get_env(ssl_cacertfile),
+            start_cowboy_secure(CACert, Cert);
         _ ->
             start_cowboy()
     end,
@@ -103,12 +104,13 @@ start_cowboy() ->
                 [{port, Port}],
                 #{}).
 
-start_cowboy_secure(Cert) ->
+start_cowboy_secure(CACert, Cert) ->
     Port = case application:get_env(ssl_port) of
                undefined -> 8443;
                SSLPort -> SSLPort
            end,
     {ok, _} = cowboy:start_tls(https, [
                                        {port, Port},
-                                       {cert, Cert}
+                                       {certfile, Cert},
+                                       {cacertfile, CACert}
                                       ], #{}).
