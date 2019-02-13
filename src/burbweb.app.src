@@ -8,7 +8,6 @@
     cowboy,
     compiler,
     erlydtl,
-    jwt,
     jsone]},
   {applications,
    [kernel,
