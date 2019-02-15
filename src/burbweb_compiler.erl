@@ -192,6 +192,18 @@ compile_files(#{name := App}) ->
     end.
 
 do_compile(File) ->
+    BeamDir =
+        case application:get_application() of
+            {ok, App} ->
+                EbinDir = code:lib_dir(App, ebin),
+                filelib:ensure_dir(EbinDir),
+                EbinDir;
+            _ ->
+                %% We're running inside an unknown application - just put it in somewhere (This is ugly)
+                [Dir|_] = code:get_path(),
+                Dir
+        end,
+
     case filelib:is_dir(File) of
         true ->
             {ok, SubFiles} = file:list_dir(File),
@@ -200,7 +212,7 @@ do_compile(File) ->
             case filename:extension(File) of
                 ".dtl" ->
                     ModName = list_to_atom(filename:basename(File, ".dtl") ++ "_dtl"),
-                    case erlydtl:compile_file(File, ModName) of
+                    case erlydtl:compile_file(File, ModName, [{out_dir, BeamDir}]) of
                         {ok, Module} ->
                             logger:info("Compiled dtl view: ~p", [Module]);
                         {ok, Module, Binary} when is_binary(Binary) ->
@@ -212,7 +224,7 @@ do_compile(File) ->
                     end,
                     {ModName, File};
                 ".erl" ->
-                    case compile:file(File) of
+                    case compile:file(File, [{out_dir, BeamDir}]) of
                         {error, Errors, Warnings} ->
                             logger:warning("Got error when compiling ~p. Errors: ~p, Warnings: ~p", [File, Errors, Warnings]),
                             [];
@@ -223,7 +235,7 @@ do_compile(File) ->
                             logger:info("Compiled erlang module from file: ~p with warnings: ~p", [File, Warnings]),
                             {ModuleName, File};
                         {ok, ModuleName} ->
-                            logger:info("Compiled erlang module from file: ~p", [File]),
+                            logger:info("Compiled erlang module from file: ~p to dir: ~p", [File, BeamDir]),
                             {ModuleName, File}
                     end;
                 _ ->
