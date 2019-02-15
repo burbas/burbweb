@@ -66,20 +66,25 @@ init([]) ->
                  period => 5},
 
     Children = [
-                child(burbweb_compiler, burbweb_compiler),
                 child(burbweb_router, burbweb_router),
                 child(burbweb_session, burbweb_session)
                ],
 
-    Children2 =
+    Children2 = case application:get_env(rest_only) of
+                    {ok, true} ->
+                        Children;
+                    _ ->
+                        [child(burbweb_compiler, burbweb_compiler)|Children]
+                end,
+    Children3 =
         case application:get_env(dev_mode) of
             {ok, true} ->
-                [child(burbweb_reloader, burbweb_reloader)|Children];
+                [child(burbweb_reloader, burbweb_reloader)|Children2];
             _ ->
-                Children
+                Children2
         end,
 
-    {ok, {SupFlags, Children2}}.
+    {ok, {SupFlags, Children3}}.
 
 %%%===================================================================
 %%% Internal functions
