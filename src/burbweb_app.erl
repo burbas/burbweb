@@ -15,7 +15,6 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
-    start_cowboy(),
     burbweb_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -25,9 +24,3 @@ stop(_State) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-start_cowboy() ->
-    Port = application:get_env(burbweb, port, 8080),
-    {ok, _} = cowboy:start_clear(
-                burbweb_listener,
-                [{port, Port}],
-                #{}).
