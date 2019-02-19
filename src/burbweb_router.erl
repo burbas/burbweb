@@ -13,6 +13,7 @@
 %% API
 -export([
          start_link/0,
+         get_main_app/0,
          process_routefile/2,
          add_route/5,
          add_route/6,
@@ -35,9 +36,10 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-          listener = burbweb_listener :: atom(),
-          dispatch_table = [] :: list()
-         }).
+                main_app :: atom(),
+                listener = burbweb_listener :: atom(),
+                dispatch_table = [] :: list()
+               }).
 
 %%%===================================================================
 %%% API
@@ -52,6 +54,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+get_main_app() ->
+    gen_server:call(?SERVER, get_main_app).
 
 process_routefile(App, Routefile) ->
     gen_server:cast(?SERVER, {process_routes, App, Routefile}).
@@ -99,8 +104,9 @@ init([]) ->
             {ok, AppsList} -> AppsList
         end,
     lists:foreach(fun load_app_route/1, Apps),
+    {ok, MainApp} = application:get_application(),
     process_flag(trap_exit, true),
-    {ok, #state{}}.
+    {ok, #state{main_app = MainApp}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,6 +122,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(get_main_app, _From, State = #state{main_app = Application}) ->
+    {reply, {ok, Application}, State};
 handle_call(get_routes, _From, State = #state{dispatch_table = DT}) ->
     {reply, {ok, DT}, State};
 handle_call(_Request, _From, State) ->
