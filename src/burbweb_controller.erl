@@ -12,6 +12,10 @@
          terminate/3
         ]).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Public functions        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 init(Req, State = #{secure := false}) -> dispatch(Req, State);
 init(Req, State = #{secure := {Mod, Func}}) ->
     case Mod:Func(Req) of
@@ -21,6 +25,9 @@ init(Req, State = #{secure := {Mod, Func}}) ->
             Req1 = cowboy_req:reply(401, Req),
             {ok, Req1, State}
     end.
+
+terminate(_Reason, _Req, _State) ->
+    ok.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -38,13 +45,6 @@ dispatch(Req, State) ->
 
 
 
-terminate(_Reason, _Req, _State) ->
-    ok.
-
-
-%%%%%%%%%%%%%%%%%%%%%
-%% Private functions
-%%%%%%%%%%%%%%%%%%%%%
 
 handle(Mod, Fun, Req = #{method := Method}, State) ->
     case Mod:Fun(Req) of
